@@ -10,7 +10,7 @@ export default class index extends Component {
     return (
       <View>
         <Text className='text-2xl font-bold mb-4 items-center justify-center flex text-center mt-20'>Volunteer App</Text>
-        <LoginForm className='h-[60vh]' />
+        <LoginForm className='' />
       </View>
     )
   }
