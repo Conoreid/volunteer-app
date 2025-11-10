@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { ThemeProvider as NavigationThemeProvider, DefaultTheme, Theme } from "@react-navigation/native";
+import React from "react";
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   // You can start from DefaultTheme and override colors you want to change

@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   View,
   ViewProps,
@@ -9,9 +8,9 @@ import {
   Text,
 } from 'react-native';
 import { useState } from 'react';
-import { auth } from '../FirebaseConfig';
+import { auth } from '@/FirebaseConfig';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
-import { router } from 'expo-router';
+// Navigation is handled centrally in app/_layout.tsx based on auth state
 
 interface ComponentNameProps extends ViewProps {
   className?: string;
@@ -26,7 +25,7 @@ export default function ComponentName({ className = '', style, ...props }: Compo
   const signIn = async () => {
     try {
       const user = await signInWithEmailAndPassword(auth, email, password);
-      if (user) router.replace('/(tabs)');
+      // Listener in app/_layout.tsx handles navigation
     } catch (error: any) {
       console.log(error);
       alert('Sign in failed: ' + error.message);
@@ -36,7 +35,7 @@ export default function ComponentName({ className = '', style, ...props }: Compo
   const signUp = async () => {
     try {
       const user = await createUserWithEmailAndPassword(auth, email, password);
-      if (user) router.replace('/(tabs)');
+      // Listener in app/_layout.tsx handles navigation
     } catch (error: any) {
       console.log(error);
       alert('Sign up failed: ' + error.message);

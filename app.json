@@ -1,5 +1,6 @@
 {
   "expo": {
+    "scheme": "volunteerapp",
     "name": "volunteer-app",
     "slug": "volunteer-app",
     "version": "1.0.0",
