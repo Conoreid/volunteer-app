@@ -9,8 +9,8 @@ export default function App() {
         initialRegion={{
           latitude: 55.861486896052135,
           longitude: -4.2423500238778145,
-          latitudeDelta: 0.5,
-          longitudeDelta: 0.5,
+          latitudeDelta: 1,
+          longitudeDelta: 1,
         }}
         style={{ height: '100%', width: '100%' }}
       />
