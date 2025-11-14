@@ -10,6 +10,7 @@ import {
 import { useState } from 'react';
 import { auth } from '@/FirebaseConfig';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { router } from 'expo-router';
 // Navigation is handled centrally in app/_layout.tsx based on auth state
 
 interface ComponentNameProps extends ViewProps {
@@ -24,7 +25,8 @@ export default function ComponentName({ className = '', style, ...props }: Compo
 
   const signIn = async () => {
     try {
-      const user = await signInWithEmailAndPassword(auth, email, password);
+      await signInWithEmailAndPassword(auth, email, password);
+      router.replace('/(tabs)');
       // Listener in app/_layout.tsx handles navigation
     } catch (error: any) {
       console.log(error);

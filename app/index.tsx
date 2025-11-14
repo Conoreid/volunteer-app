@@ -1,34 +1,26 @@
-import { Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import React, { useEffect } from 'react';
+import { Text, View, TouchableOpacity } from 'react-native';
+import React, { use, useEffect } from 'react';
 import LoginForm from '../components/LoginForm';
 
 // Firebase is imported by modules that need it; no side-effect import necessary
 import '../global.css';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/FirebaseConfig';
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 
 const Index: React.FC = () => {
-  // If already signed in, go straight to tabs
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        console.log('[Login] User already signed in -> redirecting to /(tabs)');
-        setTimeout(() => router.replace('/(tabs)'), 0);
-      }
-    });
-    return unsub;
-  }, []);
+  const router = useRouter();
+
+  const loginPage = () => {
+    router.replace('/login');
+  }
+
   return (
-    <SafeAreaView>
-      <View>
-        <Text className="mb-4 mt-20 flex items-center justify-center text-center text-2xl font-bold">
-          Volunteer App
-        </Text>
-        <LoginForm className="" />
-      </View>
-    </SafeAreaView>
+    <View className='flex justify-center items-center'>
+      <TouchableOpacity onPress={loginPage} className='mt-20 items-center bg-blue-600 w-40 p-4 rounded-md'>
+        <Text className='text-center text-white text-xl'>Login</Text>
+      </TouchableOpacity>
+    </View>
   );
 };
 
