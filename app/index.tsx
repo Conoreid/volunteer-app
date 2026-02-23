@@ -19,6 +19,7 @@ const Index: React.FC = () => {
     router.replace('/login');
   };
 
+
   return (
     <View className="flex h-[500px] items-center justify-center">
       <Image

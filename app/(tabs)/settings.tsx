@@ -8,6 +8,7 @@ export default function HomeScreen() {
   const user = auth.currentUser;
   const router = useRouter();
 
+
   const handleSignOut = async () => {
     try {
       await signOut(auth);
@@ -24,6 +25,7 @@ export default function HomeScreen() {
         className="align-center max-w-[100px] rounded-lg bg-blue-500 p-4 text-center"
         onPress={handleSignOut}>
         <Text className="text-center text-xl font-semibold text-white">Sign Out</Text>
+        
       </TouchableOpacity>
     </View>
   );
