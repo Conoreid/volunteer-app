@@ -2,6 +2,7 @@ import React, { useRef, useCallback, useState } from 'react';
 import MapView, { Marker, PROVIDER_GOOGLE, LatLng } from 'react-native-maps';
 import { View, Text } from 'react-native';
 import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
+import { MapPin } from 'lucide-react-native';
 import MarkerDetailsSheet from '@/components/MarkerDetailsSheet';
 
 interface MarkerCoordinate extends LatLng {}
@@ -26,7 +27,7 @@ const INITIAL_REGION = {
   longitudeDelta: 0.0002,
 };
 
-const MARKERS_DATA: MarkerData[] = [
+export const MARKERS_DATA: MarkerData[] = [
   {
     id: '1',
     location: { latitude: 55.86156842949501, longitude: -4.242320186831703 },
@@ -139,6 +140,24 @@ const MARKERS_DATA: MarkerData[] = [
   },
 ];
 
+function MyCustomMarkerView({ conditions }: MarkerData) {
+  const conditionCount = Object.values(conditions).filter(Boolean).length;
+  const color =
+    conditionCount === 3
+      ? '#dc2626' // Tailwind red-600
+      : conditionCount === 2
+        ? '#eab308' // Tailwind yellow-500
+        : conditionCount === 1
+          ? '#22c55e' // Tailwind green-500
+          : '#22c55e'; // Default to green if no conditions
+
+  return (
+    <View className="items-center justify-center">
+      <MapPin size="30" color="black" fill={color} strokeWidth="1" />
+    </View>
+  );
+}
+
 export default function App() {
   const mapRef = useRef<MapView>(null);
   const bottomSheetRef = useRef<BottomSheet>(null);
@@ -148,8 +167,27 @@ export default function App() {
 
   const handleMarkerPress = useCallback((markerData: MarkerData) => {
     setSelectedMarkerData(markerData);
-    // Open the sheet to the second snap point (45% height)
-    bottomSheetRef.current?.snapToIndex(1);
+    // Animate map to the selected marker's location
+    mapRef.current?.animateToRegion({
+      latitude: markerData.location.latitude,
+      longitude: markerData.location.longitude,
+      latitudeDelta: INITIAL_REGION.latitudeDelta,
+      longitudeDelta: INITIAL_REGION.longitudeDelta,
+    }, 500); // 500ms animation duration
+    bottomSheetRef.current?.snapToIndex(1); // Open the sheet to the second snap point
+  }, []);
+
+  // New function to handle switching markers from within the sheet
+  const handleSwitchMarkerFromSheet = useCallback((newMarkerData: MarkerData) => {
+    setSelectedMarkerData(newMarkerData);
+    // Animate map to the new selected marker's location
+    mapRef.current?.animateToRegion({
+      latitude: newMarkerData.location.latitude,
+      longitude: newMarkerData.location.longitude,
+      latitudeDelta: INITIAL_REGION.latitudeDelta,
+      longitudeDelta: INITIAL_REGION.longitudeDelta,
+    }, 500);
+    // The sheet will automatically re-render with the new data because selectedMarkerData changed.
   }, []);
 
   return (
@@ -165,12 +203,18 @@ export default function App() {
           <Marker
             key={marker.id}
             coordinate={marker.location}
-            onPress={() => handleMarkerPress(marker)}
-          />
+            onPress={() => handleMarkerPress(marker)}>
+            <MyCustomMarkerView {...marker} />
+          </Marker>
         ))}
       </MapView>
       <BottomSheet ref={bottomSheetRef} index={-1} snapPoints={snapPoints} enablePanDownToClose>
-        {selectedMarkerData && <MarkerDetailsSheet data={selectedMarkerData} />}
+        {selectedMarkerData && (
+          <MarkerDetailsSheet
+            data={selectedMarkerData}
+            onSelectNewMarker={handleSwitchMarkerFromSheet} // Pass the callback
+          />
+        )}
       </BottomSheet>
     </View>
   );

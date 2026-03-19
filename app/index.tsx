@@ -16,7 +16,7 @@ const Index: React.FC = () => {
   const router = useRouter();
 
   const loginPage = () => {
-    router.replace('/login');
+    router.replace('/(tabs)/explore');
   };
 
 
