@@ -1,25 +1,13 @@
 import { StyleSheet, Text, View, Button, TouchableOpacity } from 'react-native';
 import { BottomSheetView } from '@gorhom/bottom-sheet';
 import { LatLng } from 'react-native-maps';
-import { Conditions, MARKERS_DATA } from '@/app/(tabs)/explore';
-import { FontAwesome } from '@expo/vector-icons';
+import { MARKERS_DATA, type MarkerData } from '@/data/markers';
 import * as Location from 'expo-location';
 import { useEffect, useState } from 'react';
-import { MoveLeft } from 'lucide-react-native';
-import { MoveRight } from 'lucide-react-native';
-import { Check } from 'lucide-react-native';
+import JobList from './JobList';
+import Submission from './Submission';
 
 interface MarkerCoordinate extends LatLng {}
-interface MarkerData {
-  id: string;
-  location: MarkerCoordinate;
-  conditions: {
-    intoxicated: boolean;
-    distressed: boolean;
-    vulnerable: boolean;
-  };
-  time: Date;
-}
 
 interface MarkerDetailsSheetProps {
   data: MarkerData;
@@ -31,7 +19,7 @@ const MarkerDetailsSheet = ({ data, onSelectNewMarker }: MarkerDetailsSheetProps
   const [distance, setDistance] = useState<string | null>(null);
   const [accept, setAccept] = useState<boolean | null>(false);
 
-  const handleNextMarkerPress = (direction: number) => {
+  const moveSelection = (direction: number) => {
     if (onSelectNewMarker) {
       // This is a simplified example. You'd need actual logic to determine the 'next' marker.
       // For instance, finding the current marker in MARKERS_DATA and getting the next one.
@@ -86,137 +74,28 @@ const MarkerDetailsSheet = ({ data, onSelectNewMarker }: MarkerDetailsSheetProps
 
   if (!data) return null; // Should never happen, but safe check
 
-  const priority = (data: Conditions) => {
-    const n = Object.values(data).filter((c, i) => c).length;
-
-    if (n === 3) return 'high';
-    if (n === 2) return 'medium';
-    return 'low';
-  };
-
-  const getTime = (data: MarkerData) => {
-    const now = Date.now();
-    const diffSeconds = Math.floor((now - data.time.getTime()) / 1000);
-
-    const days = Math.floor(diffSeconds / 86400);
-    const hours = Math.floor((diffSeconds % 86400) / 3600);
-    const minutes = Math.floor((diffSeconds % 3600) / 60);
-
-    if (days > 0) {
-      return `${days} day${days > 1 ? 's' : ''}`;
-    }
-
-    if (hours > 0) {
-      return hours > 3
-        ? `${hours} hour${hours > 1 ? 's' : ''}`
-        : `${hours} hour${hours > 1 ? 's' : ''} and ${minutes} min${minutes !== 1 ? 's' : ''}`;
-    }
-
-    return `${minutes} min${minutes !== 1 ? 's' : ''}`;
-  };
+  
 
   const deg2rad = (deg: number) => {
     return deg * (Math.PI / 180);
   };
 
-  const acceptJob = (condition: boolean) => {
+  const acceptMarker = (condition: boolean) => {
     setAccept(condition);
   };
 
   return (
     <BottomSheetView style={styles.sheetContent}>
       {accept == false ? (
-        <View>
-          <View className="flex flex-row gap-20">
-            <View>
-              <View className="flex flex-col items-start justify-center">
-                <View className="flex flex-row items-center justify-center gap-2">
-                  <FontAwesome className="w-8 text-center" name="clock-o" size={24} color="black" />
-                  <Text className="text-sm font-bold">
-                    <Text className="text-sm font-normal italic">Reported </Text>
-                    {getTime(data)}
-                    <Text className="text-sm font-normal italic"> ago</Text>
-                  </Text>
-                </View>
-
-                <View className="flex flex-row items-center justify-center gap-2">
-                  <FontAwesome
-                    className="w-8 text-center"
-                    name="map-marker"
-                    size={24}
-                    color="black"
-                  />
-                  <Text className="text-sm font-bold">
-                    {distance === null ? ' Calculating distance...' : distance}
-                    <Text className="text-sm font-normal italic">
-                      {distance === null ? '' : ' away'}
-                    </Text>
-                  </Text>
-                </View>
-              </View>
-              <View>
-                <Text className="text-md italic">Conditions:</Text>
-                {data.conditions.intoxicated ? (
-                  <Text style={styles.condition}>• Intoxicated</Text>
-                ) : null}
-                {data.conditions.distressed ? (
-                  <Text style={styles.condition}>• Distressed</Text>
-                ) : null}
-                {data.conditions.vulnerable ? (
-                  <Text style={styles.condition}>• Vulnerable</Text>
-                ) : null}
-              </View>
-            </View>
-            <View className="flex h-32 flex-row gap-2">
-              <Text className="font-bold">Priority:</Text>
-              {priority(data.conditions) === 'high' ? (
-                <View
-                  style={[styles.dropshadow, styles.red]}
-                  className="h-6 w-11 rounded-lg bg-red-600"
-                />
-              ) : priority(data.conditions) === 'medium' ? (
-                <View
-                  style={[styles.dropshadow, styles.amber]}
-                  className="h-6 w-11 rounded-lg bg-amber-500"
-                />
-              ) : (
-                <View
-                  style={[styles.dropshadow, styles.green]}
-                  className="h-6 w-11 rounded-lg bg-green-500"
-                />
-              )}
-            </View>
-          </View>
-          <View className="mx-auto flex max-w-lg flex-row items-center gap-20 p-3">
-            <TouchableOpacity onPress={() => handleNextMarkerPress(-1)}>
-              <View className="flex flex-row items-center rounded-lg border-[1px] border-slate-200 px-7 py-3 drop-shadow-lg ">
-                <MoveLeft />
-                <Text className="text-2xl"> Back</Text>
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleNextMarkerPress(1)}>
-              <View className="flex flex-row items-center rounded-lg border-[1px] border-slate-200 px-7 py-3 drop-shadow-lg">
-                <Text className="text-2xl">Next </Text>
-                <MoveRight />
-              </View>
-            </TouchableOpacity>
-          </View>
-          <View className="mx-auto flex max-w-lg flex-row items-center gap-20 p-3">
-            <TouchableOpacity onPress={() => acceptJob(true)}>
-              <View className="flex flex-row items-center gap-3 rounded-lg border-[1px] border-slate-200 bg-green-500 px-24 py-5 drop-shadow-lg">
-                <Text className="text-2xl font-bold text-white">Accept Job</Text>
-                <Check color="white" />
-              </View>
-            </TouchableOpacity>
-          </View>
-        </View>
+        <JobList
+          marker={data}
+          distance={distance}
+          onNext={() => moveSelection(1)}
+          onPrev={() => moveSelection(-1)}
+          onAccept={() => acceptMarker(true)}
+        />
       ) : (
-        <View>
-          <Text>test</Text>
-          <TouchableOpacity onPress={() => acceptJob(false)}>
-            <Text>testing</Text>
-          </TouchableOpacity>
-        </View>
+        <Submission onAccept={() => acceptMarker(false)} />
       )}
     </BottomSheetView>
   );
