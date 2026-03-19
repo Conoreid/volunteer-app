@@ -1,25 +1,12 @@
 import { StyleSheet, Text, View, Button, TouchableOpacity } from 'react-native';
 import { BottomSheetView } from '@gorhom/bottom-sheet';
-import { LatLng } from 'react-native-maps';
-import { Conditions, MARKERS_DATA } from '@/app/(tabs)/explore';
+import { Conditions, MarkerData, MARKERS_DATA } from '@/data/markers';
 import { FontAwesome } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useEffect, useState } from 'react';
 import { MoveLeft } from 'lucide-react-native';
 import { MoveRight } from 'lucide-react-native';
 import { Check } from 'lucide-react-native';
-
-interface MarkerCoordinate extends LatLng {}
-interface MarkerData {
-  id: string;
-  location: MarkerCoordinate;
-  conditions: {
-    intoxicated: boolean;
-    distressed: boolean;
-    vulnerable: boolean;
-  };
-  time: Date;
-}
 
 interface MarkerDetailsSheetProps {
   data: MarkerData;
