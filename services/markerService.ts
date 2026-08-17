@@ -9,7 +9,13 @@ import {
   query,
 } from 'firebase/firestore';
 import { db } from '@/FirebaseConfig';
-import { type MarkerData, mapDocToMarkerData } from '@/types';
+import {
+  type MarkerData,
+  type ReportData,
+  type CompletedJobItem,
+  mapDocToMarkerData,
+  mapDocToReportData,
+} from '@/types';
 
 const MARKERS_COLLECTION = 'markers';
 const REPORTS_COLLECTION = 'reports';
@@ -102,4 +108,81 @@ export async function createReport(report: {
     createdAt: serverTimestamp(),
   });
   return reportRef.id;
+}
+
+/**
+ * Subscribes to real-time updates for submitted reports.
+ */
+export function subscribeReports(
+  onUpdate: (reports: ReportData[]) => void,
+  onError?: (error: Error) => void
+) {
+  const q = query(collection(db, REPORTS_COLLECTION));
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const reports: ReportData[] = snapshot.docs
+        .map((docSnap) => mapDocToReportData(docSnap.id, docSnap.data()))
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      onUpdate(reports);
+    },
+    (error) => {
+      console.error('Error fetching reports from Firestore:', error);
+      if (onError) onError(error);
+    }
+  );
+}
+
+/**
+ * Subscribes to completed jobs joined with their incident reports.
+ */
+export function subscribeCompletedJobs(
+  onUpdate: (jobs: CompletedJobItem[]) => void,
+  onError?: (error: Error) => void
+) {
+  let latestMarkers: MarkerData[] = [];
+  let latestReports: ReportData[] = [];
+
+  const emitJoined = () => {
+    const completedMarkers = latestMarkers.filter((m) => m.status === 'completed');
+    const items: CompletedJobItem[] = completedMarkers.map((marker) => {
+      const report = latestReports.find((r) => r.markerId === marker.id);
+      return {
+        marker,
+        report,
+      };
+    });
+    // Sort newest first based on report creation or marker time
+    items.sort((a, b) => {
+      const timeA = a.report?.createdAt?.getTime() ?? a.marker.time?.getTime() ?? 0;
+      const timeB = b.report?.createdAt?.getTime() ?? b.marker.time?.getTime() ?? 0;
+      return timeB - timeA;
+    });
+    onUpdate(items);
+  };
+
+  const unsubMarkers = subscribeMarkers(
+    (markers) => {
+      latestMarkers = markers;
+      emitJoined();
+    },
+    (err) => {
+      if (onError) onError(err);
+    }
+  );
+
+  const unsubReports = subscribeReports(
+    (reports) => {
+      latestReports = reports;
+      emitJoined();
+    },
+    (err) => {
+      if (onError) onError(err);
+    }
+  );
+
+  return () => {
+    unsubMarkers();
+    unsubReports();
+  };
 }

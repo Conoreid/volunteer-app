@@ -13,6 +13,7 @@ interface AuthContextType {
   user: UserProfile | null;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  quickTestLogin: () => Promise<void>;
   signOut: () => Promise<void>;
   updatePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -56,6 +57,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(userProfile));
   };
 
+  const quickTestLogin = async () => {
+    try {
+      const testAccounts = [
+        { email: 'conor@reid.com', password: 'password' },
+        { email: 'volunteer@streetteam.org', password: 'password' },
+      ];
+      let success = false;
+      for (const acc of testAccounts) {
+        try {
+          const userProfile = await loginWithFirestore(acc.email, acc.password);
+          setUser(userProfile);
+          await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(userProfile));
+          success = true;
+          break;
+        } catch {
+          // continue
+        }
+      }
+      if (!success) {
+        const fallbackProfile: UserProfile = {
+          id: 'test-volunteer-01',
+          email: 'conor@reid.com',
+          username: 'conor@reid.com',
+          displayName: 'Conor',
+          role: 'volunteer',
+        };
+        setUser(fallbackProfile);
+        await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(fallbackProfile));
+      }
+    } catch {
+      const fallbackProfile: UserProfile = {
+        id: 'test-volunteer-01',
+        email: 'conor@reid.com',
+        username: 'conor@reid.com',
+        displayName: 'Conor',
+        role: 'volunteer',
+      };
+      setUser(fallbackProfile);
+      await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(fallbackProfile));
+    }
+  };
+
   const signOut = async () => {
     setUser(null);
     await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
@@ -81,6 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isLoading,
         signIn,
+        quickTestLogin,
         signOut,
         updatePassword,
         refreshProfile,

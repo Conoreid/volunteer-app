@@ -1,4 +1,3 @@
-import { StyleSheet } from 'react-native';
 import { BottomSheetView } from '@gorhom/bottom-sheet';
 import { type MarkerData } from '@/types';
 import * as Location from 'expo-location';
@@ -16,6 +15,7 @@ interface MarkerDetailsSheetProps {
   data: MarkerData;
   markers: MarkerData[];
   onSelectNewMarker?: (marker: MarkerData) => void;
+  onClose?: () => void;
   currentUserId: string;
   currentUserName: string;
 }
@@ -24,6 +24,7 @@ const MarkerDetailsSheet = ({
   data,
   markers,
   onSelectNewMarker,
+  onClose,
   currentUserId,
   currentUserName,
 }: MarkerDetailsSheetProps) => {
@@ -120,6 +121,7 @@ const MarkerDetailsSheet = ({
       });
       await completeMarker(data.id);
       setShowSubmission(false);
+      onClose?.();
     } catch (err) {
       console.error('Submit report and complete marker failed:', err);
     } finally {
@@ -128,7 +130,7 @@ const MarkerDetailsSheet = ({
   };
 
   return (
-    <BottomSheetView style={styles.sheetContent}>
+    <BottomSheetView className="w-full px-5 pb-8 pt-1">
       {!showSubmission ? (
         <JobList
           marker={data}
@@ -151,10 +153,3 @@ const MarkerDetailsSheet = ({
 };
 
 export default MarkerDetailsSheet;
-
-const styles = StyleSheet.create({
-  sheetContent: {
-    padding: 20,
-    alignItems: 'flex-start',
-  },
-});

@@ -1,8 +1,16 @@
-import React, { useRef, useCallback, useState } from 'react';
+import React, { useRef, useCallback, useState, useMemo } from 'react';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import { View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import BottomSheet from '@gorhom/bottom-sheet';
-import { MapPin, ChevronDown, Filter } from 'lucide-react-native';
+import * as Location from 'expo-location';
+import {
+  ChevronDown,
+  Filter,
+  Navigation as NavigationIcon,
+  Crosshair,
+  Plus,
+  Minus,
+} from 'lucide-react-native';
 import MarkerDetailsSheet from '@/components/MarkerDetailsSheet';
 import { type MarkerData } from '@/types';
 import { useMarkers } from '@/hooks/useMarkers';
@@ -11,19 +19,25 @@ import { useAppTheme } from '@/components/ThemeProvider';
 import { useAuth } from '@/context/AuthContext';
 
 const INITIAL_REGION = {
-  latitude: 55.861486896052135,
-  longitude: -4.2423500238778145,
-  latitudeDelta: 0.0002,
-  longitudeDelta: 0.0002,
+  latitude: 55.8625,
+  longitude: -4.2465,
+  latitudeDelta: 0.025,
+  longitudeDelta: 0.025,
 };
 
 type PriorityFilter = 'all' | 'high' | 'medium' | 'low';
 
 const PRIORITY_CONFIG: Record<PriorityFilter, { label: string; color: string }> = {
-  all: { label: 'All', color: '#0d9488' },
-  high: { label: 'High', color: '#dc2626' },
-  medium: { label: 'Medium', color: '#eab308' },
-  low: { label: 'Low', color: '#22c55e' },
+  all: { label: 'All Markers', color: '#008B8B' },
+  high: { label: 'High', color: '#F85A65' },
+  medium: { label: 'Medium', color: '#FF9F0A' },
+  low: { label: 'Low', color: '#008B8B' },
+};
+
+const MARKER_IMAGES = {
+  high: require('@/assets/marker_high.png'),
+  medium: require('@/assets/marker_medium.png'),
+  low: require('@/assets/marker_low.png'),
 };
 
 const DARK_MAP_STYLE = [
@@ -41,30 +55,27 @@ const DARK_MAP_STYLE = [
   { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#3d3d3d' }] },
 ];
 
-function MyCustomMarkerView({ conditions }: MarkerData) {
-  const conditionCount = Object.values(conditions).filter(Boolean).length;
-  const color =
-    conditionCount === 3
-      ? '#dc2626'
-      : conditionCount === 2
-        ? '#eab308'
-        : conditionCount === 1
-          ? '#22c55e'
-          : '#22c55e';
+function MapMarkerItem({ marker, onPress }: { marker: MarkerData; onPress: () => void }) {
+  const priority = getPriority(marker.conditions);
+  const imageSource = MARKER_IMAGES[priority];
 
   return (
-    <View className="items-center justify-center">
-      <MapPin size="30" color="black" fill={color} strokeWidth="1" />
-    </View>
+    <Marker
+      coordinate={marker.location}
+      image={imageSource}
+      anchor={{ x: 0.5, y: 1.0 }}
+      onPress={onPress}
+    />
   );
 }
 
-export default function App() {
+export default function MapScreen() {
   const mapRef = useRef<MapView>(null);
   const bottomSheetRef = useRef<BottomSheet>(null);
   const [selectedMarkerData, setSelectedMarkerData] = useState<MarkerData | null>(null);
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('all');
   const [filterOpen, setFilterOpen] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
   const { isDark } = useAppTheme();
   const { user } = useAuth();
   const { data: markersList, isLoading, error } = useMarkers();
@@ -75,7 +86,7 @@ export default function App() {
       ? allMarkers
       : allMarkers.filter((m) => getPriority(m.conditions) === priorityFilter);
 
-  const snapPoints = ['35%', '45%', '55%', '65%', '75%', '85%', '100%'];
+  const snapPoints = useMemo(() => ['48%', '56%'], []);
 
   const handleMarkerPress = useCallback((markerData: MarkerData) => {
     setSelectedMarkerData(markerData);
@@ -83,12 +94,12 @@ export default function App() {
       {
         latitude: markerData.location.latitude,
         longitude: markerData.location.longitude,
-        latitudeDelta: INITIAL_REGION.latitudeDelta,
-        longitudeDelta: INITIAL_REGION.longitudeDelta,
+        latitudeDelta: 0.008,
+        longitudeDelta: 0.008,
       },
       500
     );
-    bottomSheetRef.current?.snapToIndex(1);
+    bottomSheetRef.current?.snapToIndex(0);
   }, []);
 
   const handleSwitchMarkerFromSheet = useCallback((newMarkerData: MarkerData) => {
@@ -97,12 +108,98 @@ export default function App() {
       {
         latitude: newMarkerData.location.latitude,
         longitude: newMarkerData.location.longitude,
-        latitudeDelta: INITIAL_REGION.latitudeDelta,
-        longitudeDelta: INITIAL_REGION.longitudeDelta,
+        latitudeDelta: 0.008,
+        longitudeDelta: 0.008,
       },
       500
     );
   }, []);
+
+  const handleCloseSheet = useCallback(() => {
+    bottomSheetRef.current?.close();
+    setSelectedMarkerData(null);
+  }, []);
+
+  // Automatically dismiss sheet if selected job is completed/removed in Firestore
+  React.useEffect(() => {
+    if (selectedMarkerData) {
+      const activeMatch = allMarkers.find((m) => m.id === selectedMarkerData.id);
+      if (!activeMatch) {
+        bottomSheetRef.current?.close();
+        setSelectedMarkerData(null);
+      } else if (
+        activeMatch.status !== selectedMarkerData.status ||
+        activeMatch.acceptedById !== selectedMarkerData.acceptedById
+      ) {
+        setSelectedMarkerData(activeMatch);
+      }
+    }
+  }, [allMarkers, selectedMarkerData]);
+
+  // Dismiss bottom sheet if active filter changes and excludes the selected marker
+  React.useEffect(() => {
+    if (selectedMarkerData && priorityFilter !== 'all') {
+      const currentPriority = getPriority(selectedMarkerData.conditions);
+      if (currentPriority !== priorityFilter) {
+        bottomSheetRef.current?.close();
+        setSelectedMarkerData(null);
+      }
+    }
+  }, [priorityFilter, selectedMarkerData]);
+
+  const handleSelectFilter = (key: PriorityFilter) => {
+    setPriorityFilter(key);
+    setFilterOpen(false);
+    if (selectedMarkerData && key !== 'all') {
+      const currentPriority = getPriority(selectedMarkerData.conditions);
+      if (currentPriority !== key) {
+        bottomSheetRef.current?.close();
+        setSelectedMarkerData(null);
+      }
+    }
+  };
+
+  const handleLocateMe = async () => {
+    setIsLocating(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Location permission is needed to centre on your position.'
+        );
+        return;
+      }
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      mapRef.current?.animateToRegion(
+        {
+          latitude: loc.coords.latitude,
+          longitude: loc.coords.longitude,
+          latitudeDelta: 0.012,
+          longitudeDelta: 0.012,
+        },
+        600
+      );
+    } catch (e) {
+      console.warn('Could not retrieve user location:', e);
+    } finally {
+      setIsLocating(false);
+    }
+  };
+
+  const handleZoomIn = async () => {
+    const camera = await mapRef.current?.getCamera();
+    if (camera && camera.zoom !== undefined) {
+      mapRef.current?.animateCamera({ zoom: camera.zoom + 1 }, { duration: 250 });
+    }
+  };
+
+  const handleZoomOut = async () => {
+    const camera = await mapRef.current?.getCamera();
+    if (camera && camera.zoom !== undefined) {
+      mapRef.current?.animateCamera({ zoom: camera.zoom - 1 }, { duration: 250 });
+    }
+  };
 
   if (error) {
     return (
@@ -119,17 +216,19 @@ export default function App() {
         initialRegion={INITIAL_REGION}
         provider={PROVIDER_GOOGLE}
         style={{ height: '100%', width: '100%' }}
-        customMapStyle={isDark ? DARK_MAP_STYLE : undefined}
+        customMapStyle={isDark ? DARK_MAP_STYLE : []}
+        userInterfaceStyle={isDark ? 'dark' : 'light'}
         showsUserLocation
-        showsMyLocationButton
+        showsMyLocationButton={false}
+        showsCompass={false}
+        toolbarEnabled={false}
         ref={mapRef}>
         {markers.map((marker) => (
-          <Marker
+          <MapMarkerItem
             key={marker.id}
-            coordinate={marker.location}
-            onPress={() => handleMarkerPress(marker)}>
-            <MyCustomMarkerView {...marker} />
-          </Marker>
+            marker={marker}
+            onPress={() => handleMarkerPress(marker)}
+          />
         ))}
       </MapView>
       {isLoading && (
@@ -138,21 +237,25 @@ export default function App() {
         </View>
       )}
 
-      {/* Priority filter dropdown */}
-      <View className="absolute right-3 top-12">
+      {/* Top Left: Filter Pill Selector */}
+      <View className="absolute left-4 top-4 z-20">
         <TouchableOpacity
-          className={`flex flex-row items-center gap-2 rounded-xl px-3 py-2 shadow-md ${isDark ? 'bg-gray-800/90' : 'bg-white/90'}`}
+          className={`flex flex-row items-center gap-2 rounded-2xl border px-3.5 py-2.5 shadow-md ${
+            isDark
+              ? 'border-gray-800 bg-surface-dark-card shadow-black/40'
+              : 'border-slate-200/80 bg-white shadow-slate-200/60'
+          }`}
           onPress={() => setFilterOpen(!filterOpen)}>
-          <Filter size={16} color={isDark ? '#d1d5db' : '#374151'} />
+          <Filter size={15} color={isDark ? '#d1d5db' : '#374151'} />
           <View
             className="h-2.5 w-2.5 rounded-full"
             style={{ backgroundColor: PRIORITY_CONFIG[priorityFilter].color }}
           />
-          <Text className={`text-sm font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
+          <Text className={`text-xs font-bold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
             {PRIORITY_CONFIG[priorityFilter].label}
           </Text>
           <ChevronDown
-            size={16}
+            size={15}
             color={isDark ? '#d1d5db' : '#374151'}
             style={{ transform: [{ rotate: filterOpen ? '180deg' : '0deg' }] }}
           />
@@ -160,21 +263,32 @@ export default function App() {
 
         {filterOpen && (
           <View
-            className={`mt-1 overflow-hidden rounded-xl shadow-md ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
+            className={`mt-1.5 min-w-[150px] overflow-hidden rounded-2xl border shadow-xl ${
+              isDark
+                ? 'border-gray-800 bg-surface-dark-card shadow-black/50'
+                : 'border-slate-200/80 bg-white shadow-slate-300/60'
+            }`}>
             {(Object.keys(PRIORITY_CONFIG) as PriorityFilter[]).map((key) => {
               const { label, color } = PRIORITY_CONFIG[key];
               const isActive = priorityFilter === key;
               return (
                 <TouchableOpacity
                   key={key}
-                  onPress={() => {
-                    setPriorityFilter(key);
-                    setFilterOpen(false);
-                  }}
-                  className={`flex flex-row items-center gap-2 px-4 py-2.5 ${isActive ? (isDark ? 'bg-gray-700' : 'bg-gray-100') : ''}`}>
-                  <View className="h-3 w-3 rounded-full" style={{ backgroundColor: color }} />
+                  onPress={() => handleSelectFilter(key)}
+                  className={`flex flex-row items-center gap-2.5 px-4 py-2.5 ${
+                    isActive ? (isDark ? 'bg-gray-800' : 'bg-slate-100') : ''
+                  }`}>
+                  <View className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
                   <Text
-                    className={`text-sm font-semibold ${isActive ? (isDark ? 'text-white' : 'text-gray-900') : isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                    className={`text-xs font-semibold ${
+                      isActive
+                        ? isDark
+                          ? 'text-white'
+                          : 'text-gray-900'
+                        : isDark
+                          ? 'text-gray-400'
+                          : 'text-gray-500'
+                    }`}>
                     {label}
                   </Text>
                 </TouchableOpacity>
@@ -184,17 +298,100 @@ export default function App() {
         )}
       </View>
 
+      {/* Top Right: Intuitive Floating Action Stack */}
+      <View className="absolute right-4 top-4 z-20 items-center gap-2.5">
+        {/* Find My GPS Location */}
+        <TouchableOpacity
+          onPress={handleLocateMe}
+          disabled={isLocating}
+          className={`h-11 w-11 items-center justify-center rounded-2xl border shadow-md active:scale-95 ${
+            isDark
+              ? 'border-gray-800 bg-surface-dark-card shadow-black/40'
+              : 'border-slate-200/80 bg-white shadow-slate-200/60'
+          }`}>
+          {isLocating ? (
+            <ActivityIndicator size="small" color="#006767" />
+          ) : (
+            <Crosshair size={20} color="#006767" />
+          )}
+        </TouchableOpacity>
+
+        {/* Re-center Sector (Glasgow City Centre) */}
+        <TouchableOpacity
+          onPress={() => {
+            mapRef.current?.animateToRegion(INITIAL_REGION, 500);
+          }}
+          className={`h-11 w-11 items-center justify-center rounded-2xl border shadow-md active:scale-95 ${
+            isDark
+              ? 'border-gray-800 bg-surface-dark-card shadow-black/40'
+              : 'border-slate-200/80 bg-white shadow-slate-200/60'
+          }`}>
+          <NavigationIcon size={19} color="#006767" />
+        </TouchableOpacity>
+
+        {/* Zoom In & Zoom Out Pill */}
+        <View
+          className={`w-11 items-center overflow-hidden rounded-2xl border shadow-md ${
+            isDark
+              ? 'border-gray-800 bg-surface-dark-card shadow-black/40'
+              : 'border-slate-200/80 bg-white shadow-slate-200/60'
+          }`}>
+          <TouchableOpacity
+            onPress={handleZoomIn}
+            className="h-10 w-full items-center justify-center active:opacity-60">
+            <Plus size={18} color={isDark ? '#e5e7eb' : '#334155'} />
+          </TouchableOpacity>
+          <View className={`h-[1px] w-7 ${isDark ? 'bg-gray-800' : 'bg-slate-200'}`} />
+          <TouchableOpacity
+            onPress={handleZoomOut}
+            className="h-10 w-full items-center justify-center active:opacity-60">
+            <Minus size={18} color={isDark ? '#e5e7eb' : '#334155'} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <BottomSheet
         ref={bottomSheetRef}
         index={-1}
         snapPoints={snapPoints}
         enablePanDownToClose
-        backgroundStyle={isDark ? { backgroundColor: '#1f2937' } : undefined}>
+        onChange={(index) => {
+          if (index === -1) {
+            setSelectedMarkerData(null);
+          }
+        }}
+        handleIndicatorStyle={{
+          backgroundColor: isDark ? '#4b5563' : '#cbd5e1',
+          width: 44,
+          height: 5,
+        }}
+        backgroundStyle={
+          isDark
+            ? {
+                backgroundColor: '#1a1b1f',
+                borderTopLeftRadius: 28,
+                borderTopRightRadius: 28,
+                borderTopWidth: 1,
+                borderColor: '#2f3034',
+              }
+            : {
+                backgroundColor: '#ffffff',
+                borderTopLeftRadius: 28,
+                borderTopRightRadius: 28,
+                borderTopWidth: 1,
+                borderColor: '#f1f5f9',
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: -4 },
+                shadowOpacity: 0.06,
+                shadowRadius: 16,
+              }
+        }>
         {selectedMarkerData && (
           <MarkerDetailsSheet
             data={selectedMarkerData}
             markers={markers}
             onSelectNewMarker={handleSwitchMarkerFromSheet}
+            onClose={handleCloseSheet}
             currentUserId={user?.id ?? ''}
             currentUserName={user?.displayName ?? user?.name ?? user?.email ?? 'Volunteer'}
           />

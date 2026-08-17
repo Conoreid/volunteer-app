@@ -1,7 +1,13 @@
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { Text, View, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { type MarkerData } from '@/types';
-import { FontAwesome } from '@expo/vector-icons';
-import { MoveLeft, MoveRight, Check } from 'lucide-react-native';
+import {
+  MoveLeft,
+  MoveRight,
+  CheckCircle2,
+  Clock,
+  Navigation,
+  AlertTriangle,
+} from 'lucide-react-native';
 import { getTime, getPriority } from '@/utils/markerUtils';
 import { useAppTheme } from '@/components/ThemeProvider';
 
@@ -16,108 +22,166 @@ interface JobListProps {
 
 const JobList = ({ marker, distance, onNext, onPrev, onAccept, isLoading }: JobListProps) => {
   const { isDark } = useAppTheme();
+  const priority = getPriority(marker.conditions);
+
+  const priorityStyles = {
+    high: {
+      bg: isDark ? 'bg-red-950/40' : 'bg-red-50',
+      text: isDark ? 'text-red-400' : 'text-red-700',
+      border: isDark ? 'border-red-900/50' : 'border-red-200',
+      label: 'HIGH PRIORITY',
+    },
+    medium: {
+      bg: isDark ? 'bg-amber-950/40' : 'bg-amber-50',
+      text: isDark ? 'text-amber-400' : 'text-amber-700',
+      border: isDark ? 'border-amber-900/50' : 'border-amber-200',
+      label: 'MEDIUM PRIORITY',
+    },
+    low: {
+      bg: isDark ? 'bg-teal-950/40' : 'bg-teal-50',
+      text: isDark ? 'text-teal-400' : 'text-teal-700',
+      border: isDark ? 'border-teal-900/50' : 'border-teal-200',
+      label: 'LOW PRIORITY',
+    },
+  }[priority];
 
   return (
-    <View>
-      <View className="flex flex-row gap-20">
-        <View>
-          <View className="flex flex-col items-start justify-center">
-            <View className="flex flex-row items-center justify-center gap-2">
-              <FontAwesome
-                className="w-8 text-center"
-                name="clock-o"
-                size={24}
-                color={isDark ? 'white' : 'black'}
-              />
-              <Text className={`text-sm font-bold ${isDark ? 'text-white' : 'text-black'}`}>
-                <Text
-                  className={`text-sm font-normal italic ${isDark ? 'text-gray-300' : 'text-black'}`}>
-                  Reported{' '}
-                </Text>
-                {getTime(marker)}
-                <Text
-                  className={`text-sm font-normal italic ${isDark ? 'text-gray-300' : 'text-black'}`}>
-                  {' '}
-                  ago
-                </Text>
-              </Text>
-            </View>
+    <View className="w-full">
+      {/* Header Row: Priority & Time */}
+      <View className="mb-3 flex-row items-center justify-between">
+        <View
+          className={`flex-row items-center rounded-full border px-3 py-1 ${priorityStyles.bg} ${priorityStyles.border}`}>
+          <Text className={`text-[11px] font-bold tracking-wider ${priorityStyles.text}`}>
+            {priorityStyles.label}
+          </Text>
+        </View>
 
-            <View className="flex flex-row items-center justify-center gap-2">
-              <FontAwesome
-                className="w-8 text-center"
-                name="map-marker"
-                size={24}
-                color={isDark ? 'white' : 'black'}
-              />
-              <Text className={`text-sm font-bold ${isDark ? 'text-white' : 'text-black'}`}>
-                {distance === null ? ' Calculating distance...' : distance}
-                <Text
-                  className={`text-sm font-normal italic ${isDark ? 'text-gray-300' : 'text-black'}`}>
-                  {distance === null ? '' : ' away'}
-                </Text>
+        <View className="flex-row items-center gap-1.5">
+          <Clock size={14} color={isDark ? '#9ca3af' : '#64748b'} />
+          <Text className={`text-xs ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+            Reported {getTime(marker)} ago
+          </Text>
+        </View>
+      </View>
+
+      {/* Incident Title & Location */}
+      <View className="mb-4">
+        <Text
+          className={`text-xl font-bold tracking-tight ${
+            isDark ? 'text-white' : 'text-on-surface'
+          }`}>
+          Incident #{marker.id}
+        </Text>
+        <Text className={`mt-0.5 text-xs ${isDark ? 'text-gray-400' : 'text-on-surface-variant'}`}>
+          Glasgow City Centre • Street Alert
+        </Text>
+      </View>
+
+      {/* Bento Grid: Distance & Conditions */}
+      <View className="mb-5 flex-row gap-3">
+        {/* Distance Card */}
+        <View
+          className={`flex-1 items-center justify-center rounded-2xl border p-3.5 ${
+            isDark
+              ? 'border-gray-800 bg-surface-dark-card shadow-sm'
+              : 'border-slate-100 bg-surface-container-low shadow-sm'
+          }`}>
+          <View className="mb-1.5 flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+            <Navigation size={16} color="#006767" />
+          </View>
+          <Text
+            className={`text-[11px] font-medium ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+            Distance
+          </Text>
+          <Text className={`mt-0.5 text-sm font-bold ${isDark ? 'text-white' : 'text-on-surface'}`}>
+            {distance === null ? 'Calculating...' : distance}
+          </Text>
+        </View>
+
+        {/* Conditions Card */}
+        <View
+          className={`flex-1 items-center justify-center rounded-2xl border p-3.5 ${
+            isDark
+              ? 'border-gray-800 bg-surface-dark-card shadow-sm'
+              : 'border-slate-100 bg-surface-container-low shadow-sm'
+          }`}>
+          <View className="mb-1.5 flex h-8 w-8 items-center justify-center rounded-full bg-amber-500/10">
+            <AlertTriangle size={16} color="#d97706" />
+          </View>
+          <Text
+            className={`text-[11px] font-medium ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+            Conditions
+          </Text>
+          <View className="mt-1 flex-row flex-wrap justify-center gap-1">
+            {marker.conditions.intoxicated && (
+              <Text className="text-[11px] font-semibold text-red-600 dark:text-red-400">
+                Intoxicated
               </Text>
-            </View>
-          </View>
-          <View className="mt-2">
-            <Text className={`text-md italic ${isDark ? 'text-gray-300' : 'text-black'}`}>
-              Conditions:
-            </Text>
-            {marker.conditions.intoxicated ? (
-              <Text style={[styles.condition, isDark && { color: 'white' }]}>• Intoxicated</Text>
-            ) : null}
-            {marker.conditions.distressed ? (
-              <Text style={[styles.condition, isDark && { color: 'white' }]}>• Distressed</Text>
-            ) : null}
-            {marker.conditions.vulnerable ? (
-              <Text style={[styles.condition, isDark && { color: 'white' }]}>• Vulnerable</Text>
-            ) : null}
+            )}
+            {marker.conditions.distressed && (
+              <Text className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                • Distressed
+              </Text>
+            )}
+            {marker.conditions.vulnerable && (
+              <Text className="text-[11px] font-semibold text-green-600 dark:text-green-400">
+                • Vulnerable
+              </Text>
+            )}
+            {!marker.conditions.intoxicated &&
+              !marker.conditions.distressed &&
+              !marker.conditions.vulnerable && (
+                <Text className={`text-[11px] ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+                  Standard
+                </Text>
+              )}
           </View>
         </View>
-        <View className="flex h-32 flex-row gap-2">
-          <Text className={`font-bold ${isDark ? 'text-white' : 'text-black'}`}>Priority:</Text>
-          {getPriority(marker.conditions) === 'high' ? (
-            <View
-              style={[styles.dropshadow, styles.red]}
-              className="h-6 w-11 rounded-lg bg-red-600"
-            />
-          ) : getPriority(marker.conditions) === 'medium' ? (
-            <View
-              style={[styles.dropshadow, styles.amber]}
-              className="h-6 w-11 rounded-lg bg-amber-500"
-            />
-          ) : (
-            <View
-              style={[styles.dropshadow, styles.green]}
-              className="h-6 w-11 rounded-lg bg-green-500"
-            />
-          )}
-        </View>
       </View>
-      <View className="mx-auto flex max-w-lg flex-row items-center gap-20 p-3">
-        <TouchableOpacity onPress={onPrev}>
-          <View
-            className={`flex flex-row items-center rounded-lg border-[1px] px-7 py-3 drop-shadow-lg ${isDark ? 'border-gray-600 bg-gray-700' : 'border-slate-200 bg-white'}`}>
-            <MoveLeft color={isDark ? 'white' : 'black'} />
-            <Text className={`text-2xl ${isDark ? 'text-white' : 'text-black'}`}> Back</Text>
-          </View>
+
+      {/* Primary Action: Accept Job */}
+      <TouchableOpacity
+        onPress={onAccept}
+        disabled={isLoading}
+        className={`h-[52px] w-full flex-row items-center justify-center gap-2 rounded-xl bg-primary shadow-sm shadow-teal-900/30 active:scale-[0.99] ${
+          isLoading ? 'opacity-70' : 'opacity-100'
+        }`}>
+        {isLoading ? (
+          <ActivityIndicator color="white" />
+        ) : (
+          <>
+            <CheckCircle2 size={18} color="white" strokeWidth={2.2} />
+            <Text className="text-[17px] font-semibold text-white">Accept Assignment</Text>
+          </>
+        )}
+      </TouchableOpacity>
+
+      {/* Navigation Switcher: Previous / Next */}
+      <View className="mt-3 flex-row gap-3">
+        <TouchableOpacity
+          onPress={onPrev}
+          className={`h-11 flex-1 flex-row items-center justify-center gap-2 rounded-xl border ${
+            isDark
+              ? 'border-gray-800 bg-surface-dark-card'
+              : 'border-slate-200 bg-surface-container-low'
+          } active:opacity-75`}>
+          <MoveLeft size={16} color={isDark ? '#e5e7eb' : '#334155'} />
+          <Text className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-800'}`}>
+            Previous
+          </Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={onNext}>
-          <View
-            className={`flex flex-row items-center rounded-lg border-[1px] px-7 py-3 drop-shadow-lg ${isDark ? 'border-gray-600 bg-gray-700' : 'border-slate-200 bg-white'}`}>
-            <Text className={`text-2xl ${isDark ? 'text-white' : 'text-black'}`}>Next </Text>
-            <MoveRight color={isDark ? 'white' : 'black'} />
-          </View>
-        </TouchableOpacity>
-      </View>
-      <View className="mx-auto flex max-w-lg flex-row items-center gap-20 p-3">
-        <TouchableOpacity onPress={onAccept} disabled={isLoading}>
-          <View className="flex flex-row items-center gap-3 rounded-lg border-[1px] border-green-600 bg-green-500 px-24 py-5 drop-shadow-lg">
-            <Text className="text-2xl font-bold text-white">
-              {isLoading ? 'Accepting...' : 'Accept Job'}
-            </Text>
-            <Check color="white" />
-          </View>
+
+        <TouchableOpacity
+          onPress={onNext}
+          className={`h-11 flex-1 flex-row items-center justify-center gap-2 rounded-xl border ${
+            isDark
+              ? 'border-gray-800 bg-surface-dark-card'
+              : 'border-slate-200 bg-surface-container-low'
+          } active:opacity-75`}>
+          <Text className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-800'}`}>
+            Next
+          </Text>
+          <MoveRight size={16} color={isDark ? '#e5e7eb' : '#334155'} />
         </TouchableOpacity>
       </View>
     </View>
@@ -125,30 +189,3 @@ const JobList = ({ marker, distance, onNext, onPrev, onAccept, isLoading }: JobL
 };
 
 export default JobList;
-
-const styles = StyleSheet.create({
-  sheetContent: {
-    padding: 20,
-    alignItems: 'flex-start',
-  },
-  condition: {
-    fontSize: 13,
-    paddingStart: 10,
-    fontWeight: 'bold',
-  },
-  dropshadow: {
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  red: {
-    shadowColor: '#ef4444',
-  },
-  amber: {
-    shadowColor: '#f59e0b',
-  },
-  green: {
-    shadowColor: '#22c55e',
-  },
-});

@@ -63,3 +63,19 @@ export function mapDocToMarkerData(id: string, data: any): MarkerData {
     acceptedAt: data.acceptedAt ? toDate(data.acceptedAt) : null,
   };
 }
+
+export function mapDocToReportData(id: string, data: any): ReportData {
+  return {
+    id,
+    markerId: data.markerId ?? '',
+    submittedById: data.submittedById ?? '',
+    submittedByName: data.submittedByName ?? 'Volunteer',
+    message: data.message ?? '',
+    createdAt: toDate(data.createdAt),
+  };
+}
+
+export interface CompletedJobItem {
+  marker: MarkerData;
+  report?: ReportData;
+}
