@@ -1,31 +1,45 @@
-import React, { useEffect } from 'react';
-import { Tabs, router } from 'expo-router';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '@/FirebaseConfig';
+import React from 'react';
+import { Tabs } from 'expo-router';
+import { TouchableOpacity } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { Ionicons } from '@expo/vector-icons';
+import { useAppTheme } from '@/components/ThemeProvider';
+
+function ThemeToggle() {
+  const { isDark, toggleTheme } = useAppTheme();
+  return (
+    <TouchableOpacity onPress={toggleTheme} className="mr-3 p-1">
+      <Ionicons name={isDark ? 'sunny' : 'moon'} size={22} color={isDark ? '#fbbf24' : '#374151'} />
+    </TouchableOpacity>
+  );
+}
 
 export default function TabsLayout() {
   return (
-    <Tabs screenOptions={{ tabBarActiveTintColor: '#155dfc' }}>
+    <Tabs
+      screenOptions={{
+        tabBarActiveTintColor: '#0d9488',
+        headerRight: () => <ThemeToggle />,
+      }}>
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <FontAwesome size={28} name="home" color={color} />,
+          title: 'Guide',
+          tabBarIcon: ({ color }) => <FontAwesome size={28} name="info-circle" color={color} />,
         }}
       />
       <Tabs.Screen
         name="explore"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <FontAwesome size={28} name="search" color={color} />,
+          title: 'Map',
+          tabBarIcon: ({ color }) => <FontAwesome size={28} name="map" color={color} />,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Settings',
-          tabBarIcon: ({ color }) => <FontAwesome size={28} name="cog" color={color} />,
+          title: 'Profile',
+          tabBarIcon: ({ color }) => <FontAwesome size={28} name="user" color={color} />,
         }}
       />
     </Tabs>

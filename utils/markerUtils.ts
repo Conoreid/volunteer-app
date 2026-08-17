@@ -1,7 +1,4 @@
-import { Conditions, type MarkerData } from '@/data/markers'
-
-
-
+import { Conditions, type MarkerData } from '@/types';
 
 export const getPriority = (data: Conditions) => {
   const n = Object.values(data).filter((c, i) => c).length;

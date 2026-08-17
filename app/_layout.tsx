@@ -1,22 +1,26 @@
-// app/_layout.tsx
-import React, { useEffect, useState } from 'react';
-import { router, Stack } from 'expo-router';
+import React from 'react';
+import { Stack } from 'expo-router';
 import { ThemeProvider } from '@/components/ThemeProvider';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { auth } from '@/FirebaseConfig';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AuthProvider } from '@/context/AuthContext';
 
-// This is the main layout for the entire app.
+const queryClient = new QueryClient();
+
 export default function RootLayout() {
   return (
     <GestureHandlerRootView>
-      <ThemeProvider>
-        <Stack>
-          <Stack.Screen name="index" options={{ headerShown: false }} />
-          <Stack.Screen name="login" options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        </Stack>
-      </ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <ThemeProvider>
+            <Stack>
+              <Stack.Screen name="index" options={{ headerShown: false }} />
+              <Stack.Screen name="login" options={{ headerShown: false }} />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            </Stack>
+          </ThemeProvider>
+        </AuthProvider>
+      </QueryClientProvider>
     </GestureHandlerRootView>
   );
 }

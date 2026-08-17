@@ -6,41 +6,42 @@ import {
   TextInput,
   TouchableOpacity,
   Text,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useState } from 'react';
-import { auth } from '@/FirebaseConfig';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { useAuth } from '@/context/AuthContext';
 import { router } from 'expo-router';
-// Navigation is handled centrally in app/_layout.tsx based on auth state
+import { useAppTheme } from '@/components/ThemeProvider';
 
-interface ComponentNameProps extends ViewProps {
+interface LoginFormProps extends ViewProps {
   className?: string;
   style?: StyleProp<ViewStyle>;
   children?: React.ReactNode;
 }
 
-export default function ComponentName({ className = '', style, ...props }: ComponentNameProps) {
+export default function LoginForm({ className = '', style, ...props }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const { signIn } = useAuth();
+  const { isDark } = useAppTheme();
 
-  const signIn = async () => {
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      router.replace('/(tabs)');
-      // Listener in app/_layout.tsx handles navigation
-    } catch (error: any) {
-      console.log(error);
-      alert('Sign in failed: ' + error.message);
+  const handleLogin = async () => {
+    if (!email.trim() || !password) {
+      Alert.alert('Missing fields', 'Please enter both email and password.');
+      return;
     }
-  };
 
-  const signUp = async () => {
+    setIsLoggingIn(true);
     try {
-      const user = await createUserWithEmailAndPassword(auth, email, password);
-      // Listener in app/_layout.tsx handles navigation
+      await signIn(email, password);
+      router.replace('/(tabs)');
     } catch (error: any) {
-      console.log(error);
-      alert('Sign up failed: ' + error.message);
+      console.error('Login error:', error);
+      Alert.alert('Sign In Failed', error.message || 'Invalid email or password.');
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -51,21 +52,31 @@ export default function ComponentName({ className = '', style, ...props }: Compo
       {...props}>
       <TextInput
         placeholder="Email"
+        placeholderTextColor={isDark ? '#9ca3af' : '#6b7280'}
         value={email}
         onChangeText={setEmail}
-        className="mb-10 h-16 w-60 rounded-lg  bg-[#F5F5FA] p-3 pl-4 text-xl"
+        autoCapitalize="none"
+        keyboardType="email-address"
+        className={`mb-10 h-16 w-60 rounded-lg p-3 pl-4 text-xl ${isDark ? 'bg-gray-800 text-white' : 'bg-[#F5F5FA] text-black'}`}
       />
       <TextInput
         placeholder="Password"
+        placeholderTextColor={isDark ? '#9ca3af' : '#6b7280'}
         secureTextEntry={true}
         value={password}
         onChangeText={setPassword}
-        className="mb-10 h-16 w-60 rounded-lg bg-[#F5F5FA] p-3 pl-4 text-xl"
+        autoCapitalize="none"
+        className={`mb-10 h-16 w-60 rounded-lg p-3 pl-4 text-xl ${isDark ? 'bg-gray-800 text-white' : 'bg-[#F5F5FA] text-black'}`}
       />
       <TouchableOpacity
-        onPress={signIn}
-        className="h-16 w-60 items-center justify-center rounded-lg bg-blue-600 p-3 hover:opacity-70">
-        <Text className="text-center text-xl font-semibold text-white">Login</Text>
+        onPress={handleLogin}
+        disabled={isLoggingIn}
+        className={`h-16 w-60 items-center justify-center rounded-lg p-3 ${isLoggingIn ? 'bg-teal-400' : 'bg-teal-600'} hover:opacity-70`}>
+        {isLoggingIn ? (
+          <ActivityIndicator color="white" />
+        ) : (
+          <Text className="text-center text-xl font-semibold text-white">Login</Text>
+        )}
       </TouchableOpacity>
     </View>
   );
